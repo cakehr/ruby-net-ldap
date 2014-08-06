@@ -16,7 +16,7 @@ module Net # :nodoc:
   end
 end
 require 'socket'
-
+require 'socksify'
 require 'net/ber'
 require 'net/ldap/pdu'
 require 'net/ldap/filter'
@@ -1140,7 +1140,16 @@ class Net::LDAP::Connection #:nodoc:
 
   def initialize(server)
     begin
-      @conn = TCPSocket.new(server[:host], server[:port])
+      if ENV["QUOTAGUARDSTATIC_URL"] != nil
+        socks = URI.parse(ENV["QUOTAGUARDSTATIC_URL"].to_s)
+        TCPSOCKSSocket::socks_server = socks.host
+        TCPSOCKSSocket::socks_port = 1080
+        TCPSOCKSSocket::socks_username = socks.user
+        TCPSOCKSSocket::socks_password = socks.password
+        @conn = TCPSOCKSSocket.new(server[:host], server[:port])
+      else
+        @conn = TCPSocket.new(server[:host], server[:port])
+      end
     rescue SocketError
       raise Net::LDAP::LdapError, "No such address or other socket error."
     rescue Errno::ECONNREFUSED
